@@ -29,16 +29,16 @@ The application is built with React.js, TypeScript, and Tailwind CSS, utilizing 
 ## 3. Technology Stack
 
 * **Frontend Framework:** React.js (v18.3.1)
-* **Language:** TypeScript (v5.5.3)
+* **Language:** TypeScript (v5.5.3) , JavaScript
 * **Styling:** Tailwind CSS (v3.4.11) with PostCSS
 * **UI Components:** Shadcn/ui
 * **Module Bundler:** Vite (v5.4.1)
 * **Routing:** React Router DOM (v6.26.2)
 * **State Management:** React Hooks (`useState`, `useEffect`), Context API
 * **Linting:** ESLint (v9.9.0) with TypeScript ESLint plugin
-* **AI/ML (Simulated):** Client-side TypeScript functions
+* **AI/ML (Simulated):** Fast API
 * **Planned Backend API:** Hapi Framework
-* **Planned Database:** MongoDB or SQLite
+* **Planned Database:** PostgreSQL
 
 ## 4. Project Structure
 
@@ -95,7 +95,7 @@ eatzi/
 └── vite.config.js                # Vite build tool configuration
 ```
 
-*(Note: Some JSX files (`.jsx`) are present alongside `.tsx` files in the provided structure, indicating a mixed JavaScript/TypeScript setup or ongoing migration.)*
+*(Note: Some JSX files (`.jsx`) are present alongside `.tsx` files in the provided structure.)*
 
 ## 5. Getting Started
 
