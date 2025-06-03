@@ -8,3 +8,8 @@
   - Daftar kelas: ['Bawang Bombai', 'Bawang Merah', 'Bawang Putih', 'Brokoli', 'Cabai Hijau', 'Cabai Merah', 'Daging Sapi', 'Daging Unggas', 'Ikan', 'Jagung', 'Jahe', 'Jamur', 'Kacang Hijau', 'Kacang Merah', 'Kacang Panjang', 'Kacang Tanah', 'Kembang Kol', 'Kentang', 'Kikil', 'Kol', 'Labu Siam', 'Mie', 'Nasi', 'Petai', 'Sawi', 'Selada', 'Seledri', 'Telur Ayam', 'Telur Bebek', 'Tempe', 'Terong', 'Timun', 'Tomat', 'Usus', 'Wortel']
 
 - Masing-masing kelas dilakukan augmentasi hingga semua kelas memiliki jumlah gambar sebanyak 500 gambar
+- Setelah dilakukan training mendapatkan hasil sebagai berikut:
+- Test accuracy: 0.9337, Test loss: 0.2312
+- Grafik:
+![Gambar 1 Visualisasi Hasil Train](images/train.png)
+- 
