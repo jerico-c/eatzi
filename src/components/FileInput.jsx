@@ -1,8 +1,15 @@
 import React, { useRef, useState } from 'react';
 import { FileImage } from 'lucide-react';
-import { toast as sonnerToast } from 'sonner'; 
+// Ganti dengan implementasi toast yang Anda gunakan.
+// Jika menggunakan sonner:
+import { toast as sonnerToast } from 'sonner';
+// Jika menggunakan shadcn/ui toast, Anda perlu memanggil hook useToast() di dalam komponen:
+// import { useToast } from '@/components/ui/use-toast'; // Contoh path
+
+// Pastikan path ke RecipeContext sudah benar
 import { useRecipe } from '../context/RecipeContext';
 
+// Helper function to convert data URL to Blob
 async function dataURLtoBlob(dataurl) {
   const arr = dataurl.split(',');
   if (arr.length < 2) {
@@ -22,13 +29,12 @@ async function dataURLtoBlob(dataurl) {
   return new Blob([u8arr], { type: mime });
 }
 
-
 const FileInput = () => {
   const fileInputRef = useRef(null);
   const [isUploading, setIsUploading] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const { addIngredient } = useRecipe();
-  // Jika menggunakan hook useToast dari shadcn/ui
+  // Jika menggunakan shadcn/ui toast:
   // const { toast } = useToast();
 
   const API_ENDPOINT = 'http://192.168.1.23:5001/klasifikasi_gambar';
@@ -38,85 +44,78 @@ const FileInput = () => {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
+      // Menggunakan sonnerToast sebagai contoh
       sonnerToast.error("Invalid file type", { description: "Please select an image file" });
       // Jika shadcn/ui: toast({ title: "Invalid file type", description: "Please select an image file", variant: "destructive" });
       return;
     }
 
     setIsUploading(true);
+    setPreviewImage(null); // Reset preview sebelum memuat yang baru
     
     const reader = new FileReader();
     
     reader.onload = async (e) => {
-      const imageDataUrl = e.target.result; // Ini adalah data URL base64
+      const imageDataUrl = e.target.result;
       setPreviewImage(imageDataUrl);
       
       sonnerToast.info("Analyzing image...", { description: "Looking for ingredients in your image..."});
       // Jika shadcn/ui: toast({ title: "Analyzing image", description: "Looking for ingredients in your image..." });
 
       try {
-        // 1. Convert data URL to Blob
         const imageBlob = await dataURLtoBlob(imageDataUrl);
-
-        // 2. Create FormData and append the image
         const formData = new FormData();
-        // Ganti 'file' dengan nama field yang diharapkan oleh API Anda
-        // Nama file 'uploaded_image.jpg' adalah opsional tapi praktik yang baik
         formData.append('file', imageBlob, file.name || 'uploaded_image.jpg'); 
 
         sonnerToast.info("Sending image to API...");
         // Jika shadcn/ui: toast({ title: "Sending image to API...", description: "Please wait." });
 
-        // 3. POST to your API
         const response = await fetch(API_ENDPOINT, {
           method: 'POST',
           body: formData,
-          // 'Content-Type': 'multipart/form-data' akan diatur otomatis oleh browser untuk FormData
         });
 
+        const responseText = await response.text();
+        console.log("Raw API Response Status:", response.status); // Untuk debugging
+        console.log("Raw API Response Text:", responseText); // Untuk debugging
+
         if (!response.ok) {
-          const errorText = await response.text();
-          // Coba parse errorText sebagai JSON jika API mungkin mengirim detail error dalam JSON
-          let apiErrorMsg = errorText;
+          let apiErrorMsg = responseText;
           try {
-            const errorJson = JSON.parse(errorText);
-            apiErrorMsg = errorJson.message || errorJson.error || errorText;
-          } catch (parseError) {
-            // Biarkan apiErrorMsg sebagai errorText jika bukan JSON
+            const errorJson = JSON.parse(responseText);
+            apiErrorMsg = errorJson.message || errorJson.error || responseText;
+          } catch (parseError) { 
+            // Biarkan apiErrorMsg sebagai responseText jika bukan JSON
           }
           throw new Error(`API Error (${response.status}): ${apiErrorMsg}`);
         }
 
-        const classificationResult = await response.json(); // Asumsi API mengembalikan JSON
+        const classificationResult = JSON.parse(responseText);
 
-        // 4. Process API response
         let ingredientsFound = 0;
-        if (classificationResult && classificationResult.ingredients && Array.isArray(classificationResult.ingredients)) {
-          classificationResult.ingredients.forEach(ingredientName => {
-            if (typeof ingredientName === 'string' && ingredientName.trim() !== '') {
-              addIngredient({ name: ingredientName, id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}` });
+        if (classificationResult && classificationResult.bahan_terdeteksi && Array.isArray(classificationResult.bahan_terdeteksi)) {
+          classificationResult.bahan_terdeteksi.forEach(item => {
+            if (item && typeof item.bahan === 'string' && item.bahan.trim() !== '') {
+              addIngredient({ 
+                name: item.bahan, 
+                // confidence: item.confidence, // Anda bisa tambahkan confidence jika perlu
+                id: `${Date.now()}-${item.bahan.replace(/\s+/g, '-')}-${Math.random().toString(36).substr(2, 5)}` 
+              });
               ingredientsFound++;
             }
-          });
-        } else if (Array.isArray(classificationResult)) { // Jika API langsung mengembalikan array string nama ingredient
-          classificationResult.forEach(ingredientName => {
-             if (typeof ingredientName === 'string' && ingredientName.trim() !== '') {
-               addIngredient({ name: ingredientName, id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}` });
-               ingredientsFound++;
-             }
           });
         }
         
         if (ingredientsFound === 0) {
           sonnerToast.warning("No ingredients found", { description: "The API didn't recognize any ingredients in the image."});
-          // Jika shadcn/ui: toast({ title: "No ingredients found", description: "The API didn't recognize any ingredients in the image.", variant: "default" }); // atau warning jika ada
+          // Jika shadcn/ui: toast({ title: "No ingredients found", description: "The API didn't recognize any ingredients in the image."});
         } else {
           sonnerToast.success("Analysis complete!", { description: `API found ${ingredientsFound} ingredients in your image.`});
           // Jika shadcn/ui: toast({ title: "Analysis complete", description: `API found ${ingredientsFound} ingredients in your image.` });
         }
 
       } catch (error) {
-        console.error("Error processing image via API:", error);
+        console.error("Error processing image via API:", error); // Log error lebih detail
         sonnerToast.error("Error processing image", { description: error.message || "Could not analyze the image using the API."});
         // Jika shadcn/ui: toast({ title: "Error processing image", description: error.message || "Could not analyze the image using the API.", variant: "destructive" });
       } finally {
@@ -132,8 +131,9 @@ const FileInput = () => {
     
     reader.readAsDataURL(file);
     
+    // Reset input file agar event onChange bisa terpicu lagi untuk file yang sama
     if (event.target) {
-        event.target.value = ""; // Reset input file
+        event.target.value = null; 
     }
   };
 
@@ -149,15 +149,15 @@ const FileInput = () => {
         ref={fileInputRef}
         type="file"
         onChange={handleFileUpload}
-        accept="image/*"
-        className="hidden"
-        aria-hidden="true" // Tambahkan untuk aksesibilitas karena dikontrol tombol lain
+        accept="image/*" // Hanya menerima file gambar
+        className="hidden" // Sembunyikan input file asli
+        aria-hidden="true"
       />
       <button
         onClick={handleButtonClick}
         disabled={isUploading}
-        className={`w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-200 transition-colors ${isUploading ? 'opacity-70 cursor-not-allowed' : ''}`}
-        type="button" // Eksplisitkan type button
+        className={`w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-300 rounded-lg transition-colors ${isUploading ? 'opacity-70 cursor-not-allowed' : ''}`}
+        type="button"
       >
         <FileImage size={18} />
         <span>{isUploading ? 'Analyzing...' : 'Upload ingredient photo'}</span>
