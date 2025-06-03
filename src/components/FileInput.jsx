@@ -1,96 +1,146 @@
-
 import React, { useRef, useState } from 'react';
 import { FileImage } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
+import { toast as sonnerToast } from 'sonner'; 
 import { useRecipe } from '../context/RecipeContext';
-import { recognizeIngredientsFromImage } from '../utils/aiRecognition';
+
+async function dataURLtoBlob(dataurl) {
+  const arr = dataurl.split(',');
+  if (arr.length < 2) {
+    throw new Error('Invalid data URL');
+  }
+  const mimeMatch = arr[0].match(/:(.*?);/);
+  if (!mimeMatch || mimeMatch.length < 2) {
+    throw new Error('Could not determine MIME type from data URL');
+  }
+  const mime = mimeMatch[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], { type: mime });
+}
+
 
 const FileInput = () => {
   const fileInputRef = useRef(null);
   const [isUploading, setIsUploading] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const { addIngredient } = useRecipe();
+  // Jika menggunakan hook useToast dari shadcn/ui
+  // const { toast } = useToast();
+
+  const API_ENDPOINT = 'http://192.168.1.23:5001/klasifikasi_gambar';
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Check if it's an image file
     if (!file.type.startsWith('image/')) {
-      toast({
-        title: "Invalid file type",
-        description: "Please select an image file",
-        variant: "destructive"
-      });
+      sonnerToast.error("Invalid file type", { description: "Please select an image file" });
+      // Jika shadcn/ui: toast({ title: "Invalid file type", description: "Please select an image file", variant: "destructive" });
       return;
     }
 
     setIsUploading(true);
     
-    // Create a preview of the image
     const reader = new FileReader();
     
     reader.onload = async (e) => {
+      const imageDataUrl = e.target.result; // Ini adalah data URL base64
+      setPreviewImage(imageDataUrl);
+      
+      sonnerToast.info("Analyzing image...", { description: "Looking for ingredients in your image..."});
+      // Jika shadcn/ui: toast({ title: "Analyzing image", description: "Looking for ingredients in your image..." });
+
       try {
-        const imageData = e.target.result;
-        setPreviewImage(imageData);
-        
-        // Analyze the image for ingredients
-        toast({
-          title: "Analyzing image",
-          description: "Looking for ingredients in your image...",
+        // 1. Convert data URL to Blob
+        const imageBlob = await dataURLtoBlob(imageDataUrl);
+
+        // 2. Create FormData and append the image
+        const formData = new FormData();
+        // Ganti 'file' dengan nama field yang diharapkan oleh API Anda
+        // Nama file 'uploaded_image.jpg' adalah opsional tapi praktik yang baik
+        formData.append('file', imageBlob, file.name || 'uploaded_image.jpg'); 
+
+        sonnerToast.info("Sending image to API...");
+        // Jika shadcn/ui: toast({ title: "Sending image to API...", description: "Please wait." });
+
+        // 3. POST to your API
+        const response = await fetch(API_ENDPOINT, {
+          method: 'POST',
+          body: formData,
+          // 'Content-Type': 'multipart/form-data' akan diatur otomatis oleh browser untuk FormData
         });
-        
-        // Use the AI recognition function from utils
-        const recognizedIngredients = await recognizeIngredientsFromImage(imageData);
-        
-        if (recognizedIngredients.length === 0) {
-          toast({
-            title: "No ingredients found",
-            description: "The image doesn't contain any recognizable ingredients",
-            variant: "destructive"
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          // Coba parse errorText sebagai JSON jika API mungkin mengirim detail error dalam JSON
+          let apiErrorMsg = errorText;
+          try {
+            const errorJson = JSON.parse(errorText);
+            apiErrorMsg = errorJson.message || errorJson.error || errorText;
+          } catch (parseError) {
+            // Biarkan apiErrorMsg sebagai errorText jika bukan JSON
+          }
+          throw new Error(`API Error (${response.status}): ${apiErrorMsg}`);
+        }
+
+        const classificationResult = await response.json(); // Asumsi API mengembalikan JSON
+
+        // 4. Process API response
+        let ingredientsFound = 0;
+        if (classificationResult && classificationResult.ingredients && Array.isArray(classificationResult.ingredients)) {
+          classificationResult.ingredients.forEach(ingredientName => {
+            if (typeof ingredientName === 'string' && ingredientName.trim() !== '') {
+              addIngredient({ name: ingredientName, id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}` });
+              ingredientsFound++;
+            }
           });
-          return;
+        } else if (Array.isArray(classificationResult)) { // Jika API langsung mengembalikan array string nama ingredient
+          classificationResult.forEach(ingredientName => {
+             if (typeof ingredientName === 'string' && ingredientName.trim() !== '') {
+               addIngredient({ name: ingredientName, id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}` });
+               ingredientsFound++;
+             }
+          });
         }
         
-        // Add each recognized ingredient
-        recognizedIngredients.forEach(ingredient => {
-          addIngredient(ingredient);
-        });
-        
-        toast({
-          title: "Analysis complete",
-          description: `Found ${recognizedIngredients.length} ingredients in your image`,
-        });
+        if (ingredientsFound === 0) {
+          sonnerToast.warning("No ingredients found", { description: "The API didn't recognize any ingredients in the image."});
+          // Jika shadcn/ui: toast({ title: "No ingredients found", description: "The API didn't recognize any ingredients in the image.", variant: "default" }); // atau warning jika ada
+        } else {
+          sonnerToast.success("Analysis complete!", { description: `API found ${ingredientsFound} ingredients in your image.`});
+          // Jika shadcn/ui: toast({ title: "Analysis complete", description: `API found ${ingredientsFound} ingredients in your image.` });
+        }
+
       } catch (error) {
-        console.error("Error processing image:", error);
-        toast({
-          title: "Error processing image",
-          description: "Could not analyze the image for ingredients",
-          variant: "destructive"
-        });
+        console.error("Error processing image via API:", error);
+        sonnerToast.error("Error processing image", { description: error.message || "Could not analyze the image using the API."});
+        // Jika shadcn/ui: toast({ title: "Error processing image", description: error.message || "Could not analyze the image using the API.", variant: "destructive" });
       } finally {
         setIsUploading(false);
       }
     };
     
     reader.onerror = () => {
-      toast({
-        title: "Error reading file",
-        description: "Could not read the image file",
-        variant: "destructive"
-      });
+      sonnerToast.error("Error reading file", { description: "Could not read the image file."});
+      // Jika shadcn/ui: toast({ title: "Error reading file", description: "Could not read the image file", variant: "destructive" });
       setIsUploading(false);
     };
     
     reader.readAsDataURL(file);
     
-    // Reset the input
-    event.target.value = "";
+    if (event.target) {
+        event.target.value = ""; // Reset input file
+    }
   };
 
   const handleButtonClick = () => {
-    fileInputRef.current.click();
+    if (fileInputRef.current) {
+        fileInputRef.current.click();
+    }
   };
 
   return (
@@ -101,16 +151,18 @@ const FileInput = () => {
         onChange={handleFileUpload}
         accept="image/*"
         className="hidden"
+        aria-hidden="true" // Tambahkan untuk aksesibilitas karena dikontrol tombol lain
       />
       <button
         onClick={handleButtonClick}
         disabled={isUploading}
         className={`w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-200 transition-colors ${isUploading ? 'opacity-70 cursor-not-allowed' : ''}`}
+        type="button" // Eksplisitkan type button
       >
         <FileImage size={18} />
         <span>{isUploading ? 'Analyzing...' : 'Upload ingredient photo'}</span>
       </button>
-      <p className="text-xs text-gray-500 mt-1">
+      <p className="text-xs text-gray-500 mt-1" id="file-input-description">
         Upload a photo of ingredients to scan
       </p>
       
