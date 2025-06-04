@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera as CameraIcon } from 'lucide-react'; 
-import { useRecipe } from '../context/RecipeContext'; // Pastikan path ini benar
+import { useRecipe } from '../context/RecipeContext';
 import { toast } from 'sonner';
 
-// Definisi Kelas Camera (seperti yang ada sebelumnya)
 class Camera {
     #currentStream;
     #streaming = false;
