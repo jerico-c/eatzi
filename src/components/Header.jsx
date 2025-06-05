@@ -51,7 +51,7 @@ const Header = () => {
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <Link to="/" className="flex items-center z-10">
           <img 
-            src="public/images/logo-navbar.png" 
+            src="/images/logo.png" 
             alt="Eatzi Logo" 
             className="h-10" 
           />
