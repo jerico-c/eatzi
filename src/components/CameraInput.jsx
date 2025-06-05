@@ -1,7 +1,13 @@
+// src/components/CameraInput.jsx
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera as CameraIcon } from 'lucide-react'; 
-import { useRecipe } from '../context/RecipeContext';
-import { toast } from 'sonner';
+import { Camera as CameraIcon, Zap, Video, VideoOff, RefreshCw } from 'lucide-react'; // Tambahkan ikon yang relevan
+import { useRecipe } from '../context/RecipeContext'; // Pastikan path ini benar
+import { toast as sonnerToast } from 'sonner'; // Menggunakan sonner untuk notifikasi
+
+// Kelas Camera dan fungsi helper lainnya (seperti Camera.stopAllStreams) tetap sama
+// ... (kode kelas Camera Anda yang sudah ada) ...
+// Saya akan salin bagian relevan dari kelas Camera jika diperlukan untuk konteks,
+// tapi asumsikan kelas Camera Anda sudah benar dan berfungsi.
 
 class Camera {
     #currentStream;
@@ -45,349 +51,306 @@ class Camera {
   
     #initialListener() {
       if (!this.#videoElement || !this.#selectCameraElement || !this.#canvasElement) {
-        console.error("Camera class: Missing required DOM elements in constructor.");
+        console.error("Camera class: One or more required HTML elements are missing.");
         return;
       }
-
-      this.#videoElement.oncanplay = () => {
-        if (this.#streaming) {
-          return;
-        }
-        if (this.#videoElement.videoWidth > 0) {
-            this.#height = (this.#videoElement.videoHeight * this.#width) / this.#videoElement.videoWidth;
-            this.#videoElement.setAttribute('width', this.#width.toString());
-            this.#videoElement.setAttribute('height', this.#height.toString());
-            this.#canvasElement.setAttribute('width', this.#width.toString());
-            this.#canvasElement.setAttribute('height', this.#height.toString());
-            this.#streaming = true;
-        }
-      };
   
-      this.#selectCameraElement.onchange = async () => {
-        await this.stop();
-        await this.launch();
-      };
+      this.#selectCameraElement.addEventListener('change', () => this.startCamera(this.#selectCameraElement.value));
+  
+      this.#videoElement.addEventListener('canplay', () => {
+        if (!this.#streaming) {
+          this.#height = this.#videoElement.videoHeight / (this.#videoElement.videoWidth / this.#width);
+          this.#videoElement.setAttribute('width', this.#width.toString());
+          this.#videoElement.setAttribute('height', this.#height.toString());
+          this.#canvasElement.setAttribute('width', this.#width.toString());
+          this.#canvasElement.setAttribute('height', this.#height.toString());
+          this.#streaming = true;
+        }
+      }, false);
     }
   
-    async #populateDeviceList(stream) {
+    async getAvailableCameras() {
       try {
-        if (!(stream instanceof MediaStream)) {
-          console.error('MediaStream not found for populating device list!');
-          return;
-        }
-        const videoTracks = stream.getVideoTracks();
-        if (!videoTracks || videoTracks.length === 0) {
-            console.error('No video tracks found in the stream.');
-            if (this.#selectCameraElement) this.#selectCameraElement.innerHTML = '<option value="">No cameras found</option>';
-            return;
-        }
-        const { deviceId } = videoTracks[0].getSettings();
-        const enumeratedDevices = await navigator.mediaDevices.enumerateDevices();
-        const list = enumeratedDevices.filter((device) => device.kind === 'videoinput');
-
-        if (list.length === 0) {
-            if (this.#selectCameraElement) this.#selectCameraElement.innerHTML = '<option value="">No cameras found</option>';
-            return;
-        }
-
-        const html = list.reduce((accumulator, device, currentIndex) => {
-          return accumulator.concat(`
-            <option
-              value="${device.deviceId}"
-              ${deviceId === device.deviceId ? 'selected' : ''}
-            >
-              ${device.label || `Camera ${currentIndex + 1}`}
-            </option>
-          `);
-        }, '');
-        if (this.#selectCameraElement) this.#selectCameraElement.innerHTML = html;
-      } catch (error) {
-        console.error('#populateDeviceList: error:', error);
-        if (this.#selectCameraElement) this.#selectCameraElement.innerHTML = '<option value="">Error listing cameras</option>';
-      }
-    }
-  
-    async #getStream() {
-      try {
-        let videoConstraints = {
-            aspectRatio: 4/3,
-            width: { ideal: this.#width }
-        };
-
-        if (this.#selectCameraElement && this.#selectCameraElement.value) {
-            videoConstraints.deviceId = { exact: this.#selectCameraElement.value };
-        }
-  
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: videoConstraints,
-          audio: false
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        this.#selectCameraElement.innerHTML = ''; 
+        videoDevices.forEach((device, index) => {
+          const option = document.createElement('option');
+          option.value = device.deviceId;
+          option.text = device.label || `Camera ${index + 1}`;
+          this.#selectCameraElement.appendChild(option);
         });
-        
-        if (this.#selectCameraElement) {
-            await this.#populateDeviceList(stream);
+        if (videoDevices.length > 0) {
+          this.startCamera(videoDevices[0].deviceId); 
+        } else {
+          console.warn("No cameras found.");
+          sonnerToast.error("Tidak ada kamera ditemukan", { description: "Pastikan kamera terhubung dan izin telah diberikan." });
         }
-  
-        return stream;
-      } catch (error) {
-        console.error('#getStream: error:', error);
-        toast.error("Could not access camera. Please ensure permissions are granted.");
-        return null; 
+      } catch (err) {
+        console.error("Error enumerating devices:", err);
+        sonnerToast.error("Gagal mengakses kamera", { description: err.message });
       }
     }
   
-    async takePicture() {
-      if (!(this.#width && this.#height && this.#streaming && this.#videoElement.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA)) {
-        console.warn("Cannot take picture: Camera not ready, dimensions not set, or no current data.");
+    startCamera(deviceId) {
+      Camera.stopAllStreams();
+      const constraints = {
+        video: { deviceId: deviceId ? { exact: deviceId } : undefined, width: this.#width },
+        audio: false
+      };
+      navigator.mediaDevices.getUserMedia(constraints)
+        .then((stream) => {
+          this.#currentStream = stream;
+          Camera.addNewStream(this.#currentStream);
+          this.#videoElement.srcObject = stream;
+          this.#videoElement.play();
+        })
+        .catch((err) => {
+          console.error("Error starting camera:", err);
+          sonnerToast.error("Gagal memulai kamera", { description: err.message });
+        });
+    }
+  
+    stopCamera() {
+      if (this.#currentStream && this.#currentStream.active) {
+        this.#currentStream.getTracks().forEach(track => track.stop());
+      }
+      this.#streaming = false;
+    }
+  
+    takePicture() {
+      if (this.#width && this.#height) {
+        const context = this.#canvasElement.getContext('2d');
+        this.#canvasElement.width = this.#width;
+        this.#canvasElement.height = this.#height;
+        context.drawImage(this.#videoElement, 0, 0, this.#width, this.#height);
+        return this.#canvasElement.toDataURL('image/jpeg', 0.8); // Ambil sebagai JPEG dengan kualitas 0.8
+      } else {
+        console.warn("Width or height not set for taking picture.");
         return null;
       }
-      const context = this.#canvasElement.getContext('2d');
-      const currentVideoWidth = this.#videoElement.videoWidth;
-      const currentVideoHeight = this.#videoElement.videoHeight;
+    }
+  }
 
-      this.#canvasElement.width = currentVideoWidth; 
-      this.#canvasElement.height = currentVideoHeight;
-      context.drawImage(this.#videoElement, 0, 0, currentVideoWidth, currentVideoHeight);
-      
-      return await new Promise((resolve) => {
-        this.#canvasElement.toBlob((blob) => resolve(blob), 'image/jpeg', 0.9);
-      });
-    }
-  
-    async launch() {
-      if (!this.#videoElement) {
-          console.error("Video element not available to launch camera.");
-          return;
-      }
-      
-      if (this.#selectCameraElement && !this.#selectCameraElement.value) {
-        try {
-            const tempStreamForListing = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-            await this.#populateDeviceList(tempStreamForListing);
-            tempStreamForListing.getTracks().forEach(track => track.stop());
-        } catch (err) {
-            console.error("Error getting temp stream for listing:", err);
-            toast.error("Failed to list cameras. Please grant camera permission.");
-            if (this.#selectCameraElement) this.#selectCameraElement.innerHTML = '<option value="">No cameras accessible</option>';
-            return; 
-        }
-      }
 
-      this.#currentStream = await this.#getStream();
-      
-      if (!this.#currentStream) {
-        console.error("Failed to launch camera: No stream obtained.");
-        return;
-      }
-  
-      Camera.addNewStream(this.#currentStream);
-  
-      this.#videoElement.srcObject = this.#currentStream;
-      this.#videoElement.play().catch(e => console.error("Error playing video:", e));
-      this.#clearCanvas();
+// Fungsi untuk mengubah dataURL menjadi Blob (jika belum ada atau berbeda dari FileInput)
+async function dataURLtoBlob(dataurl) {
+    const arr = dataurl.split(',');
+    if (arr.length < 2) {
+        throw new Error('Invalid data URL for blob conversion');
     }
-  
-    stop() {
-      if (this.#videoElement) {
-        this.#videoElement.pause();
-        this.#videoElement.srcObject = null;
-      }
-      
-      if (this.#currentStream instanceof MediaStream && this.#currentStream.active) {
-        this.#currentStream.getTracks().forEach((track) => {
-          track.stop();
-        });
-      }
-      this.#currentStream = null;
-      this.#streaming = false;
-      this.#clearCanvas();
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    if (!mimeMatch || mimeMatch.length < 2) {
+        throw new Error('Could not determine MIME type from data URL for blob');
     }
-  
-    #clearCanvas() {
-      if (!this.#canvasElement) return;
-      const context = this.#canvasElement.getContext('2d');
-      context.fillStyle = '#DDDDDD';
-      context.fillRect(0, 0, this.#canvasElement.width, this.#canvasElement.height);
+    const mime = mimeMatch[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
     }
+    return new Blob([u8arr], { type: mime });
 }
-// Akhir dari definisi Kelas Camera
 
-// Helper function to convert Blob to data URL for preview
-function blobToDataURL(blob) {
-  return new Promise((resolve, reject) => {
-    if (!blob) {
-      resolve(null);
-      return;
-    }
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
 
 const CameraInput = () => {
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
-  const [previewImage, setPreviewImage] = useState(null);
-  const [showCamera, setShowCamera] = useState(false);
-  const { addIngredient } = useRecipe();
+  const [previewImage, setPreviewImage] = useState(null); // Untuk preview gambar yang diambil
+  const [availableCameras, setAvailableCameras] = useState([]);
+  const [selectedCameraId, setSelectedCameraId] = useState('');
+
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  const cameraSelectRef = useRef(null);
+  const cameraSelectRef = useRef(null); // Ref untuk select element
   const cameraInstanceRef = useRef(null);
 
+  const { addIngredient, selectedIngredients } = useRecipe();
+
+  // Endpoint API Anda (pastikan ini benar)
   const API_ENDPOINT = 'http://192.168.1.23:5001/klasifikasi_gambar';
 
   useEffect(() => {
-    if (showCamera && videoRef.current && cameraSelectRef.current && canvasRef.current) {
+    if (isCameraOpen && videoRef.current && cameraSelectRef.current && canvasRef.current) {
       if (!cameraInstanceRef.current) {
-        cameraInstanceRef.current = new Camera({ 
+        cameraInstanceRef.current = new Camera({
           video: videoRef.current,
           cameraSelect: cameraSelectRef.current,
           canvas: canvasRef.current,
-          options: { width: 320 } 
+          options: { width: 320 } // Ukuran video bisa disesuaikan
         });
       }
-      cameraInstanceRef.current.launch()
-        .then(() => console.log("Camera launched"))
-        .catch(err => {
-            console.error("Failed to launch camera from useEffect", err);
-            toast.error("Failed to launch camera. Check permissions.");
-            setShowCamera(false);
-        });
-    } else if (!showCamera && cameraInstanceRef.current) {
-        cameraInstanceRef.current.stop();
+      cameraInstanceRef.current.getAvailableCameras().then(() => {
+        // Setelah kamera tersedia, cameraSelectRef akan diisi
+        // dan startCamera akan dipanggil secara internal oleh kelas Camera
+      });
+    } else {
+      if (cameraInstanceRef.current) {
+        cameraInstanceRef.current.stopCamera();
+        cameraInstanceRef.current = null; // Hapus instance jika kamera ditutup
+      }
+      Camera.stopAllStreams(); // Hentikan semua stream jika komponen unmount atau kamera ditutup
     }
-
+    // Cleanup function untuk menghentikan kamera saat komponen unmount
     return () => {
       if (cameraInstanceRef.current) {
-        cameraInstanceRef.current.stop();
+        cameraInstanceRef.current.stopCamera();
       }
+      Camera.stopAllStreams();
     };
-  }, [showCamera]);
-
+  }, [isCameraOpen]);
 
   const handleToggleCamera = () => {
-    setShowCamera(prev => !prev);
-    if (showCamera) {
-        setPreviewImage(null);
+    setIsCameraOpen(prev => !prev);
+    setPreviewImage(null); // Hapus preview saat kamera ditutup/dibuka
+  };
+
+  const handleCameraChange = (event) => {
+    const deviceId = event.target.value;
+    setSelectedCameraId(deviceId);
+    if (cameraInstanceRef.current) {
+      cameraInstanceRef.current.startCamera(deviceId);
     }
   };
+
 
   const handleTakePictureAndUpload = async () => {
     if (!cameraInstanceRef.current) {
-      toast.error("Camera is not initialized.");
-      return;
+        sonnerToast.error("Kamera belum siap.");
+        return;
     }
-
-    try {
+    const pictureDataUrl = cameraInstanceRef.current.takePicture();
+    if (pictureDataUrl) {
+      setPreviewImage(pictureDataUrl); // Tampilkan preview
       setIsCapturing(true);
-      toast.info("Capturing image...");
+      sonnerToast.info("Memproses gambar...", { description: "Mengirim gambar untuk analisis bahan."});
 
-      const imageBlob = await cameraInstanceRef.current.takePicture();
-      
-      if (!imageBlob) {
-        throw new Error('Failed to capture image. Is the camera active?');
-      }
+      try {
+        const blob = await dataURLtoBlob(pictureDataUrl);
+        const formData = new FormData();
+        formData.append('file', blob, 'capture.jpg');
 
-      const imageDataUrlPreview = await blobToDataURL(imageBlob);
-      setPreviewImage(imageDataUrlPreview);
-      
-      const formData = new FormData();
-      formData.append('file', imageBlob, 'ingredient_scan.jpg'); 
+        const response = await fetch(API_ENDPOINT, {
+          method: 'POST',
+          body: formData,
+        });
 
-      toast.info("Sending image to API for classification...");
-      const response = await fetch(API_ENDPOINT, {
-        method: 'POST',
-        body: formData,
-      });
+        if (!response.ok) {
+          const errorData = await response.text(); // Coba dapatkan detail error
+          throw new Error(`Gagal mengirim gambar: ${response.status} ${response.statusText}. Detail: ${errorData}`);
+        }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API Error: ${response.status} - ${errorText || response.statusText}`);
-      }
+        const result = await response.json();
+        
+        // Proses hasil dari API
+        if (result && result.bahan_terdeteksi && result.bahan_terdeteksi.length > 0) {
+          let ingredientsAddedCount = 0;
+          result.bahan_terdeteksi.forEach(detected => {
+            const ingredientName = detected.bahan; // Ambil nama bahan
+            // Cek apakah bahan sudah ada di daftar pilihan
+            const isAlreadySelected = selectedIngredients.some(
+              (selected) => selected.name.toLowerCase() === ingredientName.toLowerCase()
+            );
 
-      const classificationResult = await response.json();
-
-      if (classificationResult && classificationResult.ingredients && Array.isArray(classificationResult.ingredients)) {
-        classificationResult.ingredients.forEach(ingredientName => {
-          if (typeof ingredientName === 'string' && ingredientName.trim() !== '') {
-            addIngredient({ name: ingredientName, id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}` });
+            if (!isAlreadySelected) {
+              // Tambahkan bahan ke RecipeContext
+              // Anda perlu memastikan struktur objek bahan sesuai dengan yang diharapkan oleh addIngredient
+              // Misalnya, jika addIngredient mengharapkan { id, name }, Anda perlu generate id
+              addIngredient({
+                id: `camera-${Date.now()}-${ingredientName.toLowerCase().replace(/\s+/g, '-')}`,
+                name: ingredientName,
+                // image: opsional, jika Anda punya gambar default untuk bahan ini
+              });
+              ingredientsAddedCount++;
+            } else {
+              sonnerToast.info(`Bahan "${ingredientName}" sudah ada dalam daftar pilihan.`);
+            }
+          });
+          if (ingredientsAddedCount > 0) {
+            sonnerToast.success(`${ingredientsAddedCount} bahan berhasil dideteksi dan ditambahkan!`);
+          } else if (result.bahan_terdeteksi.length > 0) { // Ada bahan terdeteksi tapi semua sudah ada
+             sonnerToast.info("Semua bahan yang terdeteksi sudah ada dalam daftar pilihan Anda.");
+          } else { // Tidak ada bahan yang terdeteksi sama sekali
+            sonnerToast.warning("Tidak ada bahan yang dikenali dari gambar.");
           }
-        });
-        toast.success(`API found ${classificationResult.ingredients.length} ingredients!`);
-      } else if (Array.isArray(classificationResult)) {
-        classificationResult.forEach(ingredientName => {
-           if (typeof ingredientName === 'string' && ingredientName.trim() !== '') {
-             addIngredient({ name: ingredientName, id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}` });
-           }
-        });
-        toast.success(`API found ${classificationResult.length} ingredients!`);
-      } else {
-        console.warn("API response format not recognized for ingredients:", classificationResult);
-        toast.info("Image classified, but ingredient format was unexpected.");
+        } else {
+          sonnerToast.warning("Tidak ada bahan yang dikenali dari gambar.");
+        }
+
+      } catch (error) {
+        console.error("Error saat mengambil gambar atau mengirim ke API:", error);
+        sonnerToast.error("Terjadi kesalahan", { description: error.message || "Tidak dapat memproses gambar." });
+      } finally {
+        setIsCapturing(false);
       }
-    } catch (error) {
-      console.error('Error taking picture or uploading:', error);
-      toast.error(error.message || 'Failed to process image');
-    } finally {
-      setIsCapturing(false);
+    } else {
+        sonnerToast.error("Gagal mengambil gambar dari kamera.");
     }
   };
 
+
   return (
-    <div className="mt-4">
-      {/* Tombol yang dimodifikasi styling-nya */}
+    <div className="w-full">
       <button
         onClick={handleToggleCamera}
-        className="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-300 py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors mb-2"
+        className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-colors
+                    ${isCameraOpen 
+                        ? 'bg-red-100 hover:bg-red-200 text-red-700 border border-red-300' 
+                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-300'}`}
+        type="button"
       >
-        <CameraIcon size={18} /> {/* Menggunakan CameraIcon yang sudah diimpor */}
-        <span>{showCamera ? 'Hide Camera' : 'Open Camera to Scan'}</span>
+        {isCameraOpen ? <VideoOff size={18} /> : <Video size={18} />}
+        <span>{isCameraOpen ? 'Tutup Kamera' : 'Buka Kamera & Scan Bahan'}</span>
       </button>
 
-      {showCamera && (
-        <div className="mb-4 p-4 border rounded-lg bg-gray-50"> {/* Latar belakang bagian kamera juga bg-gray-50 agar serasi */}
-          <div className="mb-2">
-            <label htmlFor="cameraSelect" className="block text-sm font-medium text-gray-700 mb-1">Select Camera:</label>
-            <select id="cameraSelect" ref={cameraSelectRef} className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></select>
+      {isCameraOpen && (
+        <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
+          <div className="mb-3">
+            <label htmlFor="cameraSelect" className="block text-sm font-medium text-gray-700 mb-1">Pilih Kamera:</label>
+            <select
+              id="cameraSelect"
+              ref={cameraSelectRef}
+              onChange={handleCameraChange}
+              className="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-foodie-500 focus:border-foodie-500"
+            >
+              {/* Opsi kamera akan diisi oleh kelas Camera */}
+            </select>
           </div>
           
-          <video 
-            ref={videoRef} 
-            autoPlay 
-            playsInline 
-            muted
-            className="w-full h-auto max-w-md mx-auto bg-gray-800 rounded" // Latar video bisa disesuaikan
-            style={{ transform: 'scaleX(-1)' }}
-          >
-            Your browser does not support the video tag.
-          </video>
+          <div className="relative w-full max-w-md mx-auto bg-black rounded overflow-hidden aspect-video shadow-inner">
+            <video 
+                ref={videoRef} 
+                autoPlay 
+                playsInline
+                className="w-full h-full object-cover"
+                style={{ transform: 'scaleX(-1)' }} // Cerminkan video agar seperti cermin
+            >
+                Kamera tidak didukung oleh browser Anda.
+            </video>
+          </div>
           <canvas ref={canvasRef} style={{ display: 'none' }}></canvas>
           
-          {/* Tombol Scan & Upload di dalam view kamera bisa tetap menggunakan style foodie jika diinginkan, atau disamakan */}
           <button
             onClick={handleTakePictureAndUpload}
             disabled={isCapturing}
-            className="w-full mt-3 bg-foodie-500 hover:bg-foodie-600 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
-            // Jika ingin disamakan juga:
-            // className="w-full mt-3 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-300 py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
+            className="w-full mt-4 bg-foodie-500 hover:bg-foodie-600 text-white py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-70"
           >
             <CameraIcon size={18} />
-            <span>{isCapturing ? 'Processing...' : 'Scan & Upload Ingredients'}</span>
+            <span>{isCapturing ? 'Memproses...' : 'Ambil Gambar & Analisis Bahan'}</span>
           </button>
         </div>
       )}
       
       {previewImage && (
-        <div className="mt-4">
-          <p className="text-sm text-gray-500 mb-2">Last captured image:</p>
-          <div className="relative w-full max-w-md mx-auto h-auto bg-gray-100 rounded-lg overflow-hidden aspect-video">
+        <div className="mt-4 p-3 border border-gray-200 rounded-lg bg-gray-50">
+          <p className="text-sm text-gray-600 mb-2 font-medium">Preview Gambar Terakhir:</p>
+          <div className="relative w-full max-w-xs mx-auto h-auto bg-white rounded-md overflow-hidden shadow aspect-video">
             <img
               src={previewImage}
-              alt="Captured ingredients"
+              alt="Gambar bahan yang diambil"
               className="w-full h-full object-contain"
-              style={{ transform: 'scaleX(-1)' }}
             />
           </div>
         </div>
