@@ -1,8 +1,11 @@
+// src/components/FileInput.jsx
 import React, { useRef, useState } from 'react';
-import { FileImage } from 'lucide-react';
+import { FileImage, UploadCloud, Trash2 } from 'lucide-react'; // Tambahkan ikon
 import { toast as sonnerToast } from 'sonner';
-import { useRecipe } from '../context/RecipeContext'; 
+import { useRecipe } from '../context/RecipeContext'; // Pastikan path ini benar
 
+// Fungsi dataURLtoBlob bisa jadi sudah ada di CameraInput atau utils
+// Jika belum, tambahkan di sini atau impor dari utils.
 async function dataURLtoBlob(dataurl) {
   const arr = dataurl.split(',');
   if (arr.length < 2) {
@@ -25,147 +28,171 @@ async function dataURLtoBlob(dataurl) {
 const FileInput = () => {
   const fileInputRef = useRef(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [previewImage, setPreviewImage] = useState(null);
-  const { addIngredient } = useRecipe();
-  // Jika menggunakan shadcn/ui toast:
-  // const { toast } = useToast();
+  const [previewImage, setPreviewImage] = useState(null); // URL Data untuk preview
+  const [fileName, setFileName] = useState('');
 
+  const { addIngredient, selectedIngredients } = useRecipe();
+
+  // Endpoint API Anda (pastikan ini benar)
   const API_ENDPOINT = 'http://192.168.1.23:5001/klasifikasi_gambar';
 
-  const handleFileUpload = (event) => {
+  const handleFileChangeAndUpload = async (event) => {
     const file = event.target.files[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      sonnerToast.error("Invalid file type", { description: "Please select an image file" });
+    if (!file) {
       return;
     }
 
-    setIsUploading(true);
-    setPreviewImage(null); 
-    
+    // Validasi tipe file (opsional tapi direkomendasikan)
+    if (!file.type.startsWith('image/')) {
+        sonnerToast.error("Format file tidak didukung", { description: "Silakan unggah file gambar (JPG, PNG, dll)."});
+        if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input file
+        return;
+    }
+    // Validasi ukuran file (opsional)
+    const maxSizeInMB = 5;
+    if (file.size > maxSizeInMB * 1024 * 1024) {
+        sonnerToast.error("Ukuran file terlalu besar", { description: `Maksimum ${maxSizeInMB} MB.`});
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+    }
+
+
+    setFileName(file.name);
+    // Buat preview menggunakan FileReader
     const reader = new FileReader();
-    
-    reader.onload = async (e) => {
-      const imageDataUrl = e.target.result;
-      setPreviewImage(imageDataUrl);
+    reader.onloadend = () => {
+      setPreviewImage(reader.result);
+    };
+    reader.readAsDataURL(file);
+
+    setIsUploading(true);
+    sonnerToast.info("Mengunggah dan menganalisis gambar...", { description: `Berkas: ${file.name}`});
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(API_ENDPOINT, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Gagal mengunggah gambar: ${response.status} ${response.statusText}. Detail: ${errorData}`);
+      }
+
+      const result = await response.json();
       
-      sonnerToast.info("Analyzing image...", { description: "Looking for ingredients in your image..."});
+      // Proses hasil dari API
+      if (result && result.bahan_terdeteksi && result.bahan_terdeteksi.length > 0) {
+        let ingredientsAddedCount = 0;
+        result.bahan_terdeteksi.forEach(detected => {
+          const ingredientName = detected.bahan;
+          const isAlreadySelected = selectedIngredients.some(
+            (selected) => selected.name.toLowerCase() === ingredientName.toLowerCase()
+          );
 
-      try {
-        const imageBlob = await dataURLtoBlob(imageDataUrl);
-        const formData = new FormData();
-        formData.append('file', imageBlob, file.name || 'uploaded_image.jpg'); 
-
-        sonnerToast.info("Sending image to API...");
-
-        const response = await fetch(API_ENDPOINT, {
-          method: 'POST',
-          body: formData,
+          if (!isAlreadySelected) {
+            addIngredient({
+              id: `file-${Date.now()}-${ingredientName.toLowerCase().replace(/\s+/g, '-')}`,
+              name: ingredientName,
+            });
+            ingredientsAddedCount++;
+          } else {
+            sonnerToast.info(`Bahan "${ingredientName}" sudah ada dalam daftar pilihan.`);
+          }
         });
 
-        const responseText = await response.text();
-        console.log("Raw API Response Status:", response.status); 
-        console.log("Raw API Response Text:", responseText); 
-
-        if (!response.ok) {
-          let apiErrorMsg = responseText;
-          try {
-            const errorJson = JSON.parse(responseText);
-            apiErrorMsg = errorJson.message || errorJson.error || responseText;
-          } catch (parseError) { /* biarkan apiErrorMsg */ }
-          throw new Error(`API Error (${response.status}): ${apiErrorMsg}`);
-        }
-
-        const classificationResult = JSON.parse(responseText);
-
-        let topIngredientAdded = false;
-        // Logika untuk hanya mengambil bahan teratas yang terdeteksi
-        if (classificationResult && 
-            classificationResult.hasil_klasifikasi && 
-            Array.isArray(classificationResult.hasil_klasifikasi) && 
-            classificationResult.hasil_klasifikasi.length > 0) {
-              
-          const topItem = classificationResult.hasil_klasifikasi[0]; // Ambil item pertama
-
-          // Tambahkan bahan jika item pertama 'terdeteksi' adalah true
-          if (topItem && topItem.terdeteksi === true && typeof topItem.bahan === 'string' && topItem.bahan.trim() !== '') {
-            addIngredient({ 
-              name: topItem.bahan, 
-              id: `${Date.now()}-${topItem.bahan.replace(/\s+/g, '-')}-${Math.random().toString(36).substr(2, 5)}`,
-              confidence: topItem.confidence // Opsional
-            });
-            topIngredientAdded = true;
-          }
-        }
-        
-        if (topIngredientAdded) {
-          sonnerToast.success("Top ingredient added!", { description: `API added the top detected ingredient to your list.`});
+        if (ingredientsAddedCount > 0) {
+          sonnerToast.success(`${ingredientsAddedCount} bahan berhasil dideteksi dari file dan ditambahkan!`);
+        } else if (result.bahan_terdeteksi.length > 0) {
+            sonnerToast.info("Semua bahan yang terdeteksi dari file sudah ada dalam daftar pilihan Anda.");
         } else {
-          sonnerToast.warning("No top ingredient detected", { description: "The API didn't detect a top ingredient above the threshold or the list was empty."});
+            sonnerToast.warning("Tidak ada bahan yang dikenali dari gambar yang diunggah.");
         }
-
-      } catch (error) {
-        console.error("Error processing image via API:", error);
-        sonnerToast.error("Error processing image", { description: error.message || "Could not analyze the image using the API."});
-      } finally {
-        setIsUploading(false);
+      } else {
+        sonnerToast.warning("Tidak ada bahan yang dikenali dari gambar yang diunggah.");
       }
-    };
-    
-    reader.onerror = () => {
-      sonnerToast.error("Error reading file", { description: "Could not read the image file."});
+
+    } catch (error) {
+      console.error("Error saat mengunggah file atau mengirim ke API:", error);
+      sonnerToast.error("Terjadi kesalahan", { description: error.message || "Tidak dapat memproses file gambar." });
+      // Reset preview jika error setelah gambar dipilih
+      // setPreviewImage(null); 
+      // setFileName('');
+    } finally {
       setIsUploading(false);
-    };
-    
-    reader.readAsDataURL(file);
-    
-    if (event.target) {
-        event.target.value = null; 
+      // Reset input file agar file yang sama bisa diunggah lagi jika perlu
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
-  const handleButtonClick = () => {
+  const handleTriggerFileInput = () => {
     if (fileInputRef.current) {
-        fileInputRef.current.click();
+      fileInputRef.current.click();
     }
   };
+
+  const handleRemovePreview = () => {
+    setPreviewImage(null);
+    setFileName('');
+    if (fileInputRef.current) {
+        fileInputRef.current.value = ''; // Reset input file
+    }
+  }
 
   return (
-    <div className="mt-4">
+    <div className="w-full">
       <input
         ref={fileInputRef}
         type="file"
-        onChange={handleFileUpload}
-        accept="image/*"
-        className="hidden"
+        onChange={handleFileChangeAndUpload}
+        accept="image/*" // Hanya terima file gambar
+        className="hidden" // Sembunyikan input file asli
         aria-hidden="true"
       />
-      <button
-        onClick={handleButtonClick}
-        disabled={isUploading}
-        className={`w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-300 rounded-lg transition-colors ${isUploading ? 'opacity-70 cursor-not-allowed' : ''}`}
-        type="button"
-      >
-        <FileImage size={18} />
-        <span>{isUploading ? 'Analyzing...' : 'Upload ingredient photo'}</span>
-      </button>
-      <p className="text-xs text-gray-500 mt-1" id="file-input-description">
-        Upload a photo of ingredients to scan
-      </p>
-      
-      {previewImage && (
-        <div className="mt-4">
-          <p className="text-xs text-gray-500 mb-1">Uploaded image:</p>
-          <div className="relative w-full h-40 bg-gray-100 rounded-lg overflow-hidden">
-            <img
-              src={previewImage}
-              alt="Uploaded ingredients"
-              className="w-full h-full object-cover"
-            />
-          </div>
+      {!previewImage ? (
+        <button
+            onClick={handleTriggerFileInput}
+            disabled={isUploading}
+            className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-colors 
+                        border border-dashed border-gray-400 hover:border-foodie-500 
+                        bg-gray-50 hover:bg-foodie-50 text-gray-600 hover:text-foodie-600
+                        ${isUploading ? 'opacity-70 cursor-not-allowed' : ''}`}
+            type="button"
+        >
+            <UploadCloud size={20} />
+            <span>{isUploading ? 'Menganalisis...' : 'Unggah Foto Bahan'}</span>
+        </button>
+      ) : (
+        <div className="mt-1 p-3 border border-gray-200 rounded-lg bg-white shadow-sm">
+            <p className="text-sm text-gray-600 mb-2 font-medium truncate" title={fileName}>
+                Preview: {fileName}
+            </p>
+            <div className="relative w-full max-w-xs mx-auto h-auto bg-gray-100 rounded-md overflow-hidden shadow aspect-video mb-3">
+                <img
+                src={previewImage}
+                alt={`Preview ${fileName}`}
+                className="w-full h-full object-contain"
+                />
+            </div>
+            <button
+                onClick={handleRemovePreview}
+                disabled={isUploading}
+                className="w-full flex items-center justify-center gap-2 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-600 border border-red-200 rounded-md transition-colors text-xs disabled:opacity-50"
+                type="button"
+            >
+                <Trash2 size={14} />
+                <span>Hapus & Ganti Gambar</span>
+            </button>
         </div>
       )}
+      <p className="text-xs text-gray-500 mt-1.5 text-center" id="file-input-description">
+        Unggah foto bahan makanan untuk dideteksi otomatis.
+      </p>
     </div>
   );
 };
