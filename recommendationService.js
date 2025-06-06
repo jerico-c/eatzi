@@ -12,7 +12,6 @@ const VOCABULARY = [
 ];
 
 // Pemetaan kata kunci bahan ke nama kanonikal dalam VOCABULARY
-// Ini perlu diperluas berdasarkan 'kamus_pemetaan_bahan' dari notebook Anda untuk hasil terbaik
 const CANONICAL_TO_KEYWORDS_MAP = {
     'Bawang Bombai': ['bawang bombay', 'bombay'],
     'Bawang Merah': ['bawang merah'],
