@@ -9,7 +9,7 @@ app = Flask(__name__)
 CORS(app)  # untuk mengizinkan request dari frontend
 
 # Muat model TFLite 
-interpreter = tf.lite.Interpreter(model_path="model/food_ingredients_model.tflite") 
+interpreter = tf.lite.Interpreter(model_path="model/food_ingredients_model.tflite") # Sesuaikan dengan directory model yang akan digunakan
 interpreter.allocate_tensors()
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
