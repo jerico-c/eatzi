@@ -48,7 +48,10 @@ Backend ini adalah RESTful API yang dibangun menggunakan Node.js dan Hapi.js unt
     docker run --name eatzi-postgres -e POSTGRES_PASSWORD=mysecretpassword -e POSTGRES_USER=eatzi-user -e POSTGRES_DB=eatzi_db -p 5432:5432 -d postgres
     ```
 
-4.  **Konfigurasi Environment Variable**
+    ![config docker](images/config docker.png}
+    
+
+5.  **Konfigurasi Environment Variable**
     Buat file baru bernama `.env` di dalam direktori `/server` dan isi dengan konfigurasi berikut:
 
     ```env
@@ -61,7 +64,7 @@ Backend ini adalah RESTful API yang dibangun menggunakan Node.js dan Hapi.js unt
     CORS_ORIGIN_FRONTEND="http://0.0.0.0:8080"
     ```
 
-5.  **Migrasi Skema Database**
+6.  **Migrasi Skema Database**
     Hubungkan ke database PostgreSQL Anda menggunakan tool seperti DBeaver, pgAdmin, atau terminal, lalu jalankan skema SQL berikut untuk membuat tabel `testimonials`.
 
     ```sql
@@ -73,13 +76,15 @@ Backend ini adalah RESTful API yang dibangun menggunakan Node.js dan Hapi.js unt
     );
     ```
 
-6.  **Jalankan Server**
+     ![config DBeaver](images/config DBeaver.png}
+
+7.  **Jalankan Server**
 
     ```bash
     node server.js
     ```
 
-    Server sekarang berjalan dan siap menerima permintaan di `http://localhost:4000`.
+    Server sekarang berjalan dan siap menerima permintaan di `http://0.0.0.0:4000`.
 
 ## Dokumentasi API Endpoint
 
@@ -105,6 +110,8 @@ Mengambil semua data testimoni yang tersimpan, diurutkan dari yang terbaru.
     ]
     ```
 
+     ![test get](images/test get.png}
+
 -----
 
 ### **POST** `/testimonials`
@@ -123,6 +130,8 @@ Menambahkan testimoni baru.
       - `name`: string, minimal 3 karakter, wajib diisi.
       - `story`: string, minimal 10 karakter, wajib diisi.
   - **Respon Sukses (201 Created)**: Mengembalikan objek dari testimoni yang baru saja dibuat.
+
+    ![test post](images/test post.png}
 
 -----
 
@@ -143,6 +152,8 @@ Mengedit testimoni yang sudah ada berdasarkan ID.
   - **Respon Sukses (200 OK)**: Mengembalikan objek dari testimoni yang telah diperbarui.
   - **Respon Gagal (404 Not Found)**: Jika testimoni dengan ID tersebut tidak ditemukan.
 
+    ![test put](images/test put.png}
+
 -----
 
 ### **DELETE** `/testimonials/{id}`
@@ -159,6 +170,9 @@ Menghapus testimoni berdasarkan ID.
     }
     ```
   - **Respon Gagal (404 Not Found)**: Jika testimoni dengan ID tersebut tidak ditemukan.
+
+    ![test delete](images/test delete.png}
+    
 
 ## Panduan Deployment
 
