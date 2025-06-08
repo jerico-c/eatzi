@@ -48,7 +48,7 @@ Backend ini adalah RESTful API yang dibangun menggunakan Node.js dan Hapi.js unt
     docker run --name eatzi-postgres -e POSTGRES_PASSWORD=mysecretpassword -e POSTGRES_USER=eatzi-user -e POSTGRES_DB=eatzi_db -p 5432:5432 -d postgres
     ```
 
-    ![config docker](images/config docker.png}
+ ![config docker](images/configDocker.png}
     
 
 5.  **Konfigurasi Environment Variable**
