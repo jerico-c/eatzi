@@ -4,7 +4,6 @@ import { useRecipe } from '../context/RecipeContext'; // Pastikan path ini benar
 import { X, Search, Plus, AlertCircle } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { toast as sonnerToast } from 'sonner'; // Menggunakan sonner untuk notifikasi
 
 // Daftar bahan baru yang Anda berikan
