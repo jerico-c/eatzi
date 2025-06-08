@@ -48,7 +48,7 @@ Backend ini adalah RESTful API yang dibangun menggunakan Node.js dan Hapi.js unt
     docker run --name eatzi-postgres -e POSTGRES_PASSWORD=mysecretpassword -e POSTGRES_USER=eatzi-user -e POSTGRES_DB=eatzi_db -p 5432:5432 -d postgres
     ```
 
- ![config docker](images/configDocker.png}
+     ![config docker](images/configDocker.png)
     
 
 5.  **Konfigurasi Environment Variable**
@@ -76,7 +76,7 @@ Backend ini adalah RESTful API yang dibangun menggunakan Node.js dan Hapi.js unt
     );
     ```
 
-     ![config DBeaver](images/config DBeaver.png}
+     ![config DBeaver](images/configDBeaver.png)
 
 7.  **Jalankan Server**
 
@@ -110,7 +110,7 @@ Mengambil semua data testimoni yang tersimpan, diurutkan dari yang terbaru.
     ]
     ```
 
-     ![test get](images/test get.png}
+     ![test get](images/testGet.png)
 
 -----
 
@@ -131,7 +131,7 @@ Menambahkan testimoni baru.
       - `story`: string, minimal 10 karakter, wajib diisi.
   - **Respon Sukses (201 Created)**: Mengembalikan objek dari testimoni yang baru saja dibuat.
 
-    ![test post](images/test post.png}
+    ![test post](images/testPost.png)
 
 -----
 
@@ -152,7 +152,7 @@ Mengedit testimoni yang sudah ada berdasarkan ID.
   - **Respon Sukses (200 OK)**: Mengembalikan objek dari testimoni yang telah diperbarui.
   - **Respon Gagal (404 Not Found)**: Jika testimoni dengan ID tersebut tidak ditemukan.
 
-    ![test put](images/test put.png}
+    ![test put](images/testPut.png)
 
 -----
 
@@ -171,7 +171,7 @@ Menghapus testimoni berdasarkan ID.
     ```
   - **Respon Gagal (404 Not Found)**: Jika testimoni dengan ID tersebut tidak ditemukan.
 
-    ![test delete](images/test delete.png}
+    ![test delete](images/testDelete.png)
     
 
 ## Panduan Deployment
