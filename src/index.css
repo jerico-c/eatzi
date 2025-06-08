@@ -1,0 +1,53 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 25 100% 98%;
+    --foreground: 25 10% 20%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 25 10% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 25 10% 20%;
+
+    --primary: 25 95% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 25 100% 94%;
+    --secondary-foreground: 25 10% 20%;
+
+    --muted: 25 30% 92%;
+    --muted-foreground: 25 5% 45%;
+
+    --accent: 25 95% 85%;
+    --accent-foreground: 25 10% 20%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 25 30% 90%;
+    --input: 25 30% 90%;
+    --ring: 25 95% 65%;
+
+    --radius: 0.75rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-gradient-to-br from-foodie-200 via-foodie-100 to-foodie-300 text-foreground min-h-screen;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-lg hover:-translate-y-1;
+  }
+}
