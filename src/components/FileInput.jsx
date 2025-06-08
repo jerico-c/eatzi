@@ -1,40 +1,25 @@
 // src/components/FileInput.jsx
 import React, { useRef, useState } from 'react';
-import { FileImage, UploadCloud, Trash2 } from 'lucide-react'; // Tambahkan ikon
+import { FileImage, UploadCloud, Trash2 } from 'lucide-react';
 import { toast as sonnerToast } from 'sonner';
-import { useRecipe } from '../context/RecipeContext'; // Pastikan path ini benar
-
-// Fungsi dataURLtoBlob bisa jadi sudah ada di CameraInput atau utils
-// Jika belum, tambahkan di sini atau impor dari utils.
-async function dataURLtoBlob(dataurl) {
-  const arr = dataurl.split(',');
-  if (arr.length < 2) {
-    throw new Error('Invalid data URL');
-  }
-  const mimeMatch = arr[0].match(/:(.*?);/);
-  if (!mimeMatch || mimeMatch.length < 2) {
-    throw new Error('Could not determine MIME type from data URL');
-  }
-  const mime = mimeMatch[1];
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) {
-    u8arr[n] = bstr.charCodeAt(n);
-  }
-  return new Blob([u8arr], { type: mime });
-}
+import { useRecipe } from '../context/RecipeContext';
 
 const FileInput = () => {
   const fileInputRef = useRef(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [previewImage, setPreviewImage] = useState(null); // URL Data untuk preview
+  const [previewImage, setPreviewImage] = useState(null);
   const [fileName, setFileName] = useState('');
 
   const { addIngredient, selectedIngredients } = useRecipe();
 
-  // Endpoint API Anda (pastikan ini benar)
-  const API_ENDPOINT = 'http://192.168.1.23:5001/klasifikasi_gambar';
+  // 1. Definisikan kredensial dan endpoint
+  const API_ENDPOINT = 'https://eatzi.snafcat.com/predict';
+  const API_USERNAME = 'snafcat';
+  const API_PASSWORD = 'f63799499ac63201fd410ad7774f0262';
+
+  // 2. Buat token Basic Auth secara dinamis menggunakan btoa()
+  // btoa() adalah fungsi browser untuk Base64 encoding
+  const API_TOKEN = btoa(`${API_USERNAME}:${API_PASSWORD}`);
 
   const handleFileChangeAndUpload = async (event) => {
     const file = event.target.files[0];
@@ -42,13 +27,11 @@ const FileInput = () => {
       return;
     }
 
-    // Validasi tipe file (opsional tapi direkomendasikan)
     if (!file.type.startsWith('image/')) {
         sonnerToast.error("Format file tidak didukung", { description: "Silakan unggah file gambar (JPG, PNG, dll)."});
-        if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input file
+        if (fileInputRef.current) fileInputRef.current.value = '';
         return;
     }
-    // Validasi ukuran file (opsional)
     const maxSizeInMB = 5;
     if (file.size > maxSizeInMB * 1024 * 1024) {
         sonnerToast.error("Ukuran file terlalu besar", { description: `Maksimum ${maxSizeInMB} MB.`});
@@ -56,9 +39,7 @@ const FileInput = () => {
         return;
     }
 
-
     setFileName(file.name);
-    // Buat preview menggunakan FileReader
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreviewImage(reader.result);
@@ -74,6 +55,11 @@ const FileInput = () => {
 
       const response = await fetch(API_ENDPOINT, {
         method: 'POST',
+        headers: {
+            // 3. Gunakan token yang sudah dibuat
+            'Authorization': `Basic ${API_TOKEN}`,
+            'Accept': 'application/json'
+        },
         body: formData,
       });
 
@@ -84,46 +70,31 @@ const FileInput = () => {
 
       const result = await response.json();
       
-      // Proses hasil dari API
-      if (result && result.bahan_terdeteksi && result.bahan_terdeteksi.length > 0) {
-        let ingredientsAddedCount = 0;
-        result.bahan_terdeteksi.forEach(detected => {
-          const ingredientName = detected.bahan;
-          const isAlreadySelected = selectedIngredients.some(
-            (selected) => selected.name.toLowerCase() === ingredientName.toLowerCase()
-          );
+      if (result && result.success && result.data && result.data.predicted_class) {
+        const ingredientName = result.data.predicted_class;
+        const isAlreadySelected = selectedIngredients.some(
+          (selected) => selected.name.toLowerCase() === ingredientName.toLowerCase()
+        );
 
-          if (!isAlreadySelected) {
-            addIngredient({
-              id: `file-${Date.now()}-${ingredientName.toLowerCase().replace(/\s+/g, '-')}`,
-              name: ingredientName,
-            });
-            ingredientsAddedCount++;
-          } else {
-            sonnerToast.info(`Bahan "${ingredientName}" sudah ada dalam daftar pilihan.`);
-          }
-        });
-
-        if (ingredientsAddedCount > 0) {
-          sonnerToast.success(`${ingredientsAddedCount} bahan berhasil dideteksi dari file dan ditambahkan!`);
-        } else if (result.bahan_terdeteksi.length > 0) {
-            sonnerToast.info("Semua bahan yang terdeteksi dari file sudah ada dalam daftar pilihan Anda.");
+        if (!isAlreadySelected) {
+          addIngredient({
+            id: `file-${Date.now()}-${ingredientName.toLowerCase().replace(/\s+/g, '-')}`,
+            name: ingredientName,
+          });
+          sonnerToast.success(`Bahan "${ingredientName}" berhasil dideteksi dari file dan ditambahkan!`);
         } else {
-            sonnerToast.warning("Tidak ada bahan yang dikenali dari gambar yang diunggah.");
+          sonnerToast.info(`Bahan "${ingredientName}" sudah ada dalam daftar pilihan.`);
         }
       } else {
-        sonnerToast.warning("Tidak ada bahan yang dikenali dari gambar yang diunggah.");
+        const errorMessage = result.message || "Tidak ada bahan yang dikenali dari gambar yang diunggah.";
+        sonnerToast.warning("Prediksi Gagal", { description: errorMessage });
       }
 
     } catch (error) {
       console.error("Error saat mengunggah file atau mengirim ke API:", error);
       sonnerToast.error("Terjadi kesalahan", { description: error.message || "Tidak dapat memproses file gambar." });
-      // Reset preview jika error setelah gambar dipilih
-      // setPreviewImage(null); 
-      // setFileName('');
     } finally {
       setIsUploading(false);
-      // Reset input file agar file yang sama bisa diunggah lagi jika perlu
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -140,7 +111,7 @@ const FileInput = () => {
     setPreviewImage(null);
     setFileName('');
     if (fileInputRef.current) {
-        fileInputRef.current.value = ''; // Reset input file
+        fileInputRef.current.value = '';
     }
   }
 
@@ -150,8 +121,8 @@ const FileInput = () => {
         ref={fileInputRef}
         type="file"
         onChange={handleFileChangeAndUpload}
-        accept="image/*" // Hanya terima file gambar
-        className="hidden" // Sembunyikan input file asli
+        accept="image/*"
+        className="hidden"
         aria-hidden="true"
       />
       {!previewImage ? (
@@ -174,9 +145,9 @@ const FileInput = () => {
             </p>
             <div className="relative w-full max-w-xs mx-auto h-auto bg-gray-100 rounded-md overflow-hidden shadow aspect-video mb-3">
                 <img
-                src={previewImage}
-                alt={`Preview ${fileName}`}
-                className="w-full h-full object-contain"
+                    src={previewImage}
+                    alt={`Preview ${fileName}`}
+                    className="w-full h-full object-contain"
                 />
             </div>
             <button

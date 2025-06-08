@@ -1,14 +1,10 @@
 // src/components/CameraInput.jsx
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera as CameraIcon, Zap, Video, VideoOff, RefreshCw } from 'lucide-react'; // Tambahkan ikon yang relevan
-import { useRecipe } from '../context/RecipeContext'; // Pastikan path ini benar
-import { toast as sonnerToast } from 'sonner'; // Menggunakan sonner untuk notifikasi
+import { Camera as CameraIcon, Zap, Video, VideoOff, RefreshCw } from 'lucide-react';
+import { useRecipe } from '../context/RecipeContext';
+import { toast as sonnerToast } from 'sonner';
 
-// Kelas Camera dan fungsi helper lainnya (seperti Camera.stopAllStreams) tetap sama
-// ... (kode kelas Camera Anda yang sudah ada) ...
-// Saya akan salin bagian relevan dari kelas Camera jika diperlukan untuk konteks,
-// tapi asumsikan kelas Camera Anda sudah benar dan berfungsi.
-
+// ... (Kelas Camera dan fungsi dataURLtoBlob tetap sama)
 class Camera {
     #currentStream;
     #streaming = false;
@@ -124,25 +120,20 @@ class Camera {
         this.#canvasElement.width = this.#width;
         this.#canvasElement.height = this.#height;
         context.drawImage(this.#videoElement, 0, 0, this.#width, this.#height);
-        return this.#canvasElement.toDataURL('image/jpeg', 0.8); // Ambil sebagai JPEG dengan kualitas 0.8
+        return this.#canvasElement.toDataURL('image/jpeg', 0.8);
       } else {
         console.warn("Width or height not set for taking picture.");
         return null;
       }
     }
-  }
+}
 
 
-// Fungsi untuk mengubah dataURL menjadi Blob (jika belum ada atau berbeda dari FileInput)
 async function dataURLtoBlob(dataurl) {
     const arr = dataurl.split(',');
-    if (arr.length < 2) {
-        throw new Error('Invalid data URL for blob conversion');
-    }
+    if (arr.length < 2) throw new Error('Invalid data URL');
     const mimeMatch = arr[0].match(/:(.*?);/);
-    if (!mimeMatch || mimeMatch.length < 2) {
-        throw new Error('Could not determine MIME type from data URL for blob');
-    }
+    if (!mimeMatch) throw new Error('Could not determine MIME type');
     const mime = mimeMatch[1];
     const bstr = atob(arr[1]);
     let n = bstr.length;
@@ -157,20 +148,24 @@ async function dataURLtoBlob(dataurl) {
 const CameraInput = () => {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
-  const [previewImage, setPreviewImage] = useState(null); // Untuk preview gambar yang diambil
-  const [availableCameras, setAvailableCameras] = useState([]);
-  const [selectedCameraId, setSelectedCameraId] = useState('');
-
+  const [previewImage, setPreviewImage] = useState(null);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  const cameraSelectRef = useRef(null); // Ref untuk select element
+  const cameraSelectRef = useRef(null);
   const cameraInstanceRef = useRef(null);
 
   const { addIngredient, selectedIngredients } = useRecipe();
 
-  // Endpoint API Anda (pastikan ini benar)
-  const API_ENDPOINT = 'http://192.168.1.23:5001/klasifikasi_gambar';
+  // --- PERUBAHAN DI SINI ---
+  // 1. Definisikan kredensial dan endpoint yang sama seperti FileInput
+  const API_ENDPOINT = 'https://eatzi.snafcat.com/predict';
+  const API_USERNAME = 'snafcat';
+  const API_PASSWORD = 'f63799499ac63201fd410ad7774f0262';
+
+  // 2. Buat token Basic Auth secara dinamis
+  const API_TOKEN = btoa(`${API_USERNAME}:${API_PASSWORD}`);
+  // --- AKHIR PERUBAHAN ---
 
   useEffect(() => {
     if (isCameraOpen && videoRef.current && cameraSelectRef.current && canvasRef.current) {
@@ -179,21 +174,17 @@ const CameraInput = () => {
           video: videoRef.current,
           cameraSelect: cameraSelectRef.current,
           canvas: canvasRef.current,
-          options: { width: 320 } // Ukuran video bisa disesuaikan
+          options: { width: 320 }
         });
       }
-      cameraInstanceRef.current.getAvailableCameras().then(() => {
-        // Setelah kamera tersedia, cameraSelectRef akan diisi
-        // dan startCamera akan dipanggil secara internal oleh kelas Camera
-      });
+      cameraInstanceRef.current.getAvailableCameras();
     } else {
       if (cameraInstanceRef.current) {
         cameraInstanceRef.current.stopCamera();
-        cameraInstanceRef.current = null; // Hapus instance jika kamera ditutup
+        cameraInstanceRef.current = null;
       }
-      Camera.stopAllStreams(); // Hentikan semua stream jika komponen unmount atau kamera ditutup
+      Camera.stopAllStreams();
     }
-    // Cleanup function untuk menghentikan kamera saat komponen unmount
     return () => {
       if (cameraInstanceRef.current) {
         cameraInstanceRef.current.stopCamera();
@@ -204,12 +195,11 @@ const CameraInput = () => {
 
   const handleToggleCamera = () => {
     setIsCameraOpen(prev => !prev);
-    setPreviewImage(null); // Hapus preview saat kamera ditutup/dibuka
+    setPreviewImage(null);
   };
 
   const handleCameraChange = (event) => {
     const deviceId = event.target.value;
-    setSelectedCameraId(deviceId);
     if (cameraInstanceRef.current) {
       cameraInstanceRef.current.startCamera(deviceId);
     }
@@ -223,7 +213,7 @@ const CameraInput = () => {
     }
     const pictureDataUrl = cameraInstanceRef.current.takePicture();
     if (pictureDataUrl) {
-      setPreviewImage(pictureDataUrl); // Tampilkan preview
+      setPreviewImage(pictureDataUrl);
       setIsCapturing(true);
       sonnerToast.info("Memproses gambar...", { description: "Mengirim gambar untuk analisis bahan."});
 
@@ -232,52 +222,46 @@ const CameraInput = () => {
         const formData = new FormData();
         formData.append('file', blob, 'capture.jpg');
 
+        // --- PERUBAHAN PADA FETCH ---
         const response = await fetch(API_ENDPOINT, {
           method: 'POST',
+          headers: {
+              'Authorization': `Basic ${API_TOKEN}`,
+              'Accept': 'application/json'
+          },
           body: formData,
         });
+        // --- AKHIR PERUBAHAN PADA FETCH ---
 
         if (!response.ok) {
-          const errorData = await response.text(); // Coba dapatkan detail error
+          const errorData = await response.text();
           throw new Error(`Gagal mengirim gambar: ${response.status} ${response.statusText}. Detail: ${errorData}`);
         }
 
         const result = await response.json();
         
-        // Proses hasil dari API
-        if (result && result.bahan_terdeteksi && result.bahan_terdeteksi.length > 0) {
-          let ingredientsAddedCount = 0;
-          result.bahan_terdeteksi.forEach(detected => {
-            const ingredientName = detected.bahan; // Ambil nama bahan
-            // Cek apakah bahan sudah ada di daftar pilihan
+        // --- PERUBAHAN PADA LOGIKA RESPON ---
+        // Sesuaikan dengan struktur respons API baru
+        if (result && result.success && result.data && result.data.predicted_class) {
+            const ingredientName = result.data.predicted_class;
             const isAlreadySelected = selectedIngredients.some(
               (selected) => selected.name.toLowerCase() === ingredientName.toLowerCase()
             );
 
             if (!isAlreadySelected) {
-              // Tambahkan bahan ke RecipeContext
-              // Anda perlu memastikan struktur objek bahan sesuai dengan yang diharapkan oleh addIngredient
-              // Misalnya, jika addIngredient mengharapkan { id, name }, Anda perlu generate id
               addIngredient({
                 id: `camera-${Date.now()}-${ingredientName.toLowerCase().replace(/\s+/g, '-')}`,
                 name: ingredientName,
-                // image: opsional, jika Anda punya gambar default untuk bahan ini
               });
-              ingredientsAddedCount++;
+              sonnerToast.success(`Bahan "${ingredientName}" berhasil dideteksi dari kamera dan ditambahkan!`);
             } else {
               sonnerToast.info(`Bahan "${ingredientName}" sudah ada dalam daftar pilihan.`);
             }
-          });
-          if (ingredientsAddedCount > 0) {
-            sonnerToast.success(`${ingredientsAddedCount} bahan berhasil dideteksi dan ditambahkan!`);
-          } else if (result.bahan_terdeteksi.length > 0) { // Ada bahan terdeteksi tapi semua sudah ada
-             sonnerToast.info("Semua bahan yang terdeteksi sudah ada dalam daftar pilihan Anda.");
-          } else { // Tidak ada bahan yang terdeteksi sama sekali
-            sonnerToast.warning("Tidak ada bahan yang dikenali dari gambar.");
-          }
         } else {
-          sonnerToast.warning("Tidak ada bahan yang dikenali dari gambar.");
+            const errorMessage = result.message || "Tidak ada bahan yang dikenali dari gambar yang diambil.";
+            sonnerToast.warning("Prediksi Gagal", { description: errorMessage });
         }
+        // --- AKHIR PERUBAHAN PADA LOGIKA RESPON ---
 
       } catch (error) {
         console.error("Error saat mengambil gambar atau mengirim ke API:", error);
@@ -315,7 +299,6 @@ const CameraInput = () => {
               onChange={handleCameraChange}
               className="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-foodie-500 focus:border-foodie-500"
             >
-              {/* Opsi kamera akan diisi oleh kelas Camera */}
             </select>
           </div>
           
@@ -325,7 +308,7 @@ const CameraInput = () => {
                 autoPlay 
                 playsInline
                 className="w-full h-full object-cover"
-                style={{ transform: 'scaleX(-1)' }} // Cerminkan video agar seperti cermin
+                style={{ transform: 'scaleX(-1)' }}
             >
                 Kamera tidak didukung oleh browser Anda.
             </video>

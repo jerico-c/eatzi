@@ -20,24 +20,27 @@ const Index = () => {
           <div className="flex flex-col md:flex-row items-center">
             <div className="w-full md:w-1/2 md:pr-8 mb-8 md:mb-0">
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 text-gray-800">
-                Transform Your <span className="text-foodie-600">Pantry</span> Into Delicious Meals
+                Ubah  <span className="text-foodie-600">Bahan Makananmu</span> Jadi Masakan Maknyus!!
               </h1>
               <p className="text-lg md:text-xl text-gray-700 mb-8">
-                Discover recipes tailored to the ingredients you already have. Simply snap a photo or select your ingredients to get started.
+                Temukan resep yang sesuai dengan bahan-bahan yang udah kamu punya. Cukup jepret foto atau masukin bahan-bahanmu sekarang.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <Link 
-                  to="/recipes" 
-                  className="bg-foodie-500 hover:bg-foodie-600 text-white font-medium px-6 py-3 rounded-lg text-center transition-colors shadow-lg hover:shadow-xl"
-                >
-                  Find Recipes
-                </Link>
                 <a 
                   href="#ingredients" 
-                  className="border-2 border-foodie-500 text-foodie-600 hover:bg-foodie-100 font-medium px-6 py-3 rounded-lg text-center transition-colors"
+                   className="bg-foodie-500 hover:bg-foodie-600 text-white font-medium px-6 py-3 rounded-lg text-center transition-colors shadow-lg hover:shadow-xl"
+                  
                 >
-                  Input Ingredients
+                  Cari Resepmu
                 </a>
+                <Link 
+                  to="/about" 
+                  className="border-2 border-foodie-500 text-foodie-600 hover:bg-foodie-100 font-medium px-6 py-3 rounded-lg text-center transition-colors"
+                 
+                >
+                  Tentang Eatzi
+                </Link>
+                
               </div>
             </div>
             <div className="w-full md:w-1/2">
@@ -50,8 +53,8 @@ const Index = () => {
                   />
                 </div>
                 <div className="absolute -bottom-4 -right-4 bg-foodie-100 p-4 rounded-lg shadow-md hidden md:block">
-                  <p className="text-foodie-600 font-medium">200+ Recipes</p>
-                  <p className="text-sm text-gray-600">Ready to Cook</p>
+                  <p className="text-foodie-600 font-medium">500+ Resep</p>
+                  <p className="text-sm text-gray-600">Siap Dimasak</p>
                 </div>
               </div>
             </div>
@@ -66,14 +69,14 @@ const Index = () => {
       <div id="ingredients" className="container mx-auto px-4 py-12">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold mb-4 text-gray-800">Find Recipes with Your Ingredients</h2>
+            <h2 className="text-3xl font-bold mb-4 text-gray-800">Temuin Resep yang Sesuai</h2>
             <p className="text-lg text-gray-600">
-              Enter ingredients you have, snap a photo, or upload a file to get matching recipes
+              Masukin bahan-bahan yang kamu punya, ambil foto, atau unggah file buat dapetin resep yang cocok
             </p>
           </div>
           
           <div className="bg-white p-6 rounded-xl shadow-md">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">What ingredients do you have?</h2>
+            <h2 className="text-xl font-semibold mb-4 text-gray-800">Kamu punya bahan makanan apa aja?</h2>
             <IngredientInput />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <CameraInput />

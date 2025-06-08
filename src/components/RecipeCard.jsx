@@ -3,15 +3,6 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, Zap, NotebookText } from 'lucide-react';
 
-const PlaceholderImage = ({ title }) => {
-    const safeTitle = typeof title === 'string' ? title.trim() : '';
-    const initials = safeTitle ? safeTitle.split(' ').map(word => word[0]).join('').substring(0, 2).toUpperCase() : 'R';
-    return (
-        <div className="w-full h-48 bg-green-100 flex items-center justify-center text-green-500">
-            <span className="text-4xl font-bold">{initials}</span>
-        </div>
-    );
-};
 
 const RecipeCard = ({ recipe }) => {
     const recipeTitle = (typeof recipe.Title === 'string' ? recipe.Title : "Judul Tidak Tersedia").trim();
@@ -58,9 +49,7 @@ const RecipeCard = ({ recipe }) => {
                 className="placeholder-image-container w-full h-48 bg-green-100 flex items-center justify-center text-green-500" 
                 style={{ display: imageUrl ? 'none' : 'flex' }}
             >
-                 <span className="text-4xl font-bold">
-                    {recipeTitle.split(' ').map(word => word[0]).join('').substring(0, 2).toUpperCase()}
-                </span>
+                 
             </div>
 
             <div className="p-5 flex flex-col flex-grow">
