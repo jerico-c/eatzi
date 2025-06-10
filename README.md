@@ -73,3 +73,29 @@ Untuk menjalankan proyek ini di lingkungan lokal Anda, ikuti langkah-langkah ber
 3.  **Bagikan Cooking Story**:
     * Navigasi ke halaman "Cooking Stories".
     * Isi formulir untuk menambahkan nama dan cerita pengalaman memasak Anda, lalu kirim.
+  
+## Tampilan Website
+1. Tampilan Home
+   ![home page](https://github.com/jerico-c/eatzi/blob/storiesAPI-(RESTful-API)/images/home%20page.png)
+   
+3. Tampilan Input
+   ![input](https://github.com/jerico-c/eatzi/blob/storiesAPI-(RESTful-API)/images/input.png)
+   
+4. Tampilan saat Klasifikasi Bahan
+   ![klasifikasi](https://github.com/jerico-c/eatzi/blob/storiesAPI-(RESTful-API)/images/classify.png)
+   
+5. Tampilan Rekomendasi Resep
+   ![resep](https://github.com/jerico-c/eatzi/blob/storiesAPI-(RESTful-API)/images/recipe.png)
+
+7. Tampilan Detail Resep
+   ![detail resep](https://github.com/jerico-c/eatzi/blob/storiesAPI-(RESTful-API)/images/recipe%20detail.png)
+
+8. Tampilan Cooking Stories
+   ![cooking stories](https://github.com/jerico-c/eatzi/blob/storiesAPI-(RESTful-API)/images/cooking%20stories.png)
+
+9. Tampilan About
+   ![about](https://github.com/jerico-c/eatzi/blob/storiesAPI-(RESTful-API)/images/about.png)
+   
+
+
+
