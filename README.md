@@ -82,7 +82,7 @@ Backend ini adalah RESTful API yang dibangun menggunakan Node.js dan Hapi.js unt
 7.  **Jalankan Server**
 
     ```bash
-    node server.js
+    npm run start
     ```
 
     Server sekarang berjalan dan siap menerima permintaan di `http://0.0.0.0:4000`.
