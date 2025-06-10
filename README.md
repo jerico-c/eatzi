@@ -40,7 +40,7 @@ Untuk menjalankan proyek ini di lingkungan lokal Anda, ikuti langkah-langkah ber
 
 1.  **Clone Repositori**:
     ```bash
-    git clone https://github.com/eatzi/eatzi.git
+    git clone https://github.com/jerico-c/eatzi.git
     cd eatzi
     ```
 
