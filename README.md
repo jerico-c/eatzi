@@ -28,20 +28,21 @@ Backend ini adalah RESTful API yang dibangun menggunakan Node.js dan Hapi.js unt
 
 ### Langkah-langkah Instalasi
 
-1.  **Navigasi ke Direktori Server**
-    Dari root proyek, masuk ke folder `server`.
+1.  **Download Branch ini dalam bentuk Zip**
+   
+2.  **Navigasi ke Direktori Server**
 
     ```bash
     cd server
     ```
 
-2.  **Instal Dependensi**
+3.  **Instal Dependensi**
 
     ```bash
     npm install
     ```
 
-3.  **Jalankan Database PostgreSQL via Docker**
+4.  **Jalankan Database PostgreSQL via Docker**
     Buka terminal dan jalankan perintah ini untuk membuat kontainer database.
 
     ```bash
