@@ -1,4 +1,4 @@
-# Bagaimana cara menggunakan secara lokal?
+# Cara menggunakan secara lokal!
 
 Pertama, kloning branch ini dari repositori dengan:
 
