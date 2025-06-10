@@ -2,9 +2,10 @@
 
 Pertama, kloning branch ini dari repositori dengan:
 
-```bash
+```python
 git clone --single-branch --branch flask-API [https://github.com/jerz-c/eatzl.git](https://github.com/jerz-c/eatzl.git)
-
+```
+```
 Sekarang, buat virtual environment untuk menjalankan proyek
 py -3 -m venv .venv
 
