@@ -1,6 +1,4 @@
-
-<h1 align="center"> Machine Learning Eatzi </h1>
-
+<h1 align="center"> 🥕 Machine Learning Eatzi 🍗 </h1>
 
 ## Model Development
 
@@ -69,7 +67,7 @@ Setelah pelatihan awal, kami menerapkan *fine-tuning* pada model dasar untuk men
 
 * **Pembekuan Lapisan:** Beberapa lapisan atas dari `base_model` MobileNetV2 di-*unfreeze* (diatur menjadi `trainable=True`) untuk memungkinkan penyesuaian bobot selama *fine-tuning*. Lapisan-lapisan yang lebih dalam tetap dibekukan untuk mempertahankan fitur-fitur fundamental.
 * **Kompilasi Model untuk Fine-Tuning:** Model dikompilasi ulang dengan *learning rate* yang lebih rendah untuk *fine-tuning*, memastikan bahwa perubahan pada bobot *base model* tidak terlalu drastis.
-    * **Optimizer:** `Adam` dengan `learning_rate` yang lebih kecil (misalnya, `0.0001` atau `0.00001` seperti yang umum dalam *fine-tuning*).
+    * **Optimizer:** `Adam` dengan `learning_rate` = `0.0001`
     * **Fungsi Kerugian (Loss Function):** Tetap `tf.keras.losses.SparseCategoricalCrossentropy`.
     * **Metrik:** Tetap `accuracy`.
 * **Optimisasi Callback:** Callback berikut digunakan selama fase *fine-tuning* untuk mengoptimalkan proses pelatihan:
@@ -81,7 +79,7 @@ Setelah pelatihan awal, kami menerapkan *fine-tuning* pada model dasar untuk men
 
 Model dilanjutkan pelatihannya dengan *fine-tuning* pada lapisan yang telah di-*unfreeze* dan *learning rate* yang lebih rendah.
 
-* `epochs`: (total *epochs* setelah *fine-tuning*, misal 30 atau 50)
+* `epochs`: (total *epochs* setelah *fine-tuning*, 10 epoch)
 * `initial_epoch`: Dimulai dari *epoch* terakhir pelatihan awal.
 * `steps_per_epoch`: Dihitung berdasarkan ukuran set pelatihan.
 * `validation_steps`: Dihitung berdasarkan ukuran set validasi.
@@ -108,25 +106,3 @@ Test accuracy: 0.9857, Test loss: 0.0510
 ### Penyimpanan Model
 
 Model yang telah dilatih sepenuhnya diekspor dan disimpan dalam format TensorFlow SavedModel atau format `.h5` (seperti `model-klasifikasi.h5` oleh `ModelCheckpoint`) untuk penggunaan dan inferensi.
-
-
-
-
-
-
-
-# **Model Machine Learning**
-- Model machine learning klasifikasi gambar untuk mengklasifikasikan bahan-bahan makanan yang terdiri dari 35 bahan makanan,
-- Melakukan pembuatan model CNN untuk mencari akurasi model yang terbaik,
-  - Pre trained model 
-- Dataset yang digunakan : https://www.kaggle.com/datasets/zollycitraprayogi/food-ingredients-image
-- Dataset terdiri dari 75 bahan makanan yang terdiri dari buah, sayur, dan daging, dimana hanya diambil beberapa kelas saja yaitu sebanyak 35 kelas:
-
-  - Daftar kelas: ['Bawang Bombai', 'Bawang Merah', 'Bawang Putih', 'Brokoli', 'Cabai Hijau', 'Cabai Merah', 'Daging Sapi', 'Daging Unggas', 'Ikan', 'Jagung', 'Jahe', 'Jamur', 'Kacang Hijau', 'Kacang Merah', 'Kacang Panjang', 'Kacang Tanah', 'Kembang Kol', 'Kentang', 'Kikil', 'Kol', 'Labu Siam', 'Mie', 'Nasi', 'Petai', 'Sawi', 'Selada', 'Seledri', 'Telur Ayam', 'Telur Bebek', 'Tempe', 'Terong', 'Timun', 'Tomat', 'Usus', 'Wortel']
-
-- Masing-masing kelas dilakukan augmentasi hingga semua kelas memiliki jumlah gambar sebanyak 500 gambar
-- Setelah dilakukan training mendapatkan hasil sebagai berikut:
-- Test accuracy: 0.9337, Test loss: 0.2312
-- Grafik:
-![Gambar 1 Visualisasi Hasil Train](images/train.png)
-- 
