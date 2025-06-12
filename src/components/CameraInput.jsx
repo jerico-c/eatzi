@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera as CameraIcon, Zap, Video, VideoOff, RefreshCw } from 'lucide-react';
 import { useRecipe } from '../context/RecipeContext';
@@ -158,8 +157,8 @@ const CameraInput = () => {
   const { addIngredient, selectedIngredients } = useRecipe();
 
   const API_ENDPOINT = 'https://eatzi.snafcat.com/predict';
-  const API_USERNAME = 'snafcat';
-  const API_PASSWORD = 'f63799499ac63201fd410ad7774f0262';
+  const API_USERNAME = import.meta.env.VITE_API_USERNAME;
+  const API_PASSWORD = import.meta.env.VITE_API_PASSWORD;
   
   const API_TOKEN = btoa(`${API_USERNAME}:${API_PASSWORD}`);
 
